@@ -1,0 +1,180 @@
+---
+title: "COVID_FORECAST"
+author: "THOMAS, JAMES"
+date: "6/3/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, setup1, message = FALSE, warning = FALSE}
+library(dplyr)
+library(flux)
+library(ggplot2)
+library(gridExtra)
+library(knitr)
+library(rockchalk)
+library(tidyverse)
+library(forecast)
+library(xts)
+```
+
+
+```{r}
+mydata <- read.csv("covid.csv", sep = ",", stringsAsFactors = TRUE)
+```
+
+
+```{r}
+data <- data.frame(mydata)
+```
+##1)Descriptive Statistics: Do an Exploratory Data Analysis (EDA) and provide appropriate summary statistics / visualizations to help understand the spread of the disease (incidence) as well as its fatality rate. 
+
+```{r}
+str(data)
+
+summary(data$case)
+
+summary(data$deaths)
+
+
+hist(data$cases)
+skewness(data$cases)
+kurtosis(data$cases)
+
+hist(data$deaths)
+skewness(data$deaths)
+kurtosis(data$deaths)
+
+case.rate <- data$popData2019 / data$cases
+case.rate[is.na(case.rate)] <- 0
+case.rate[!is.finite(case.rate)] <- 0
+mean(case.rate)
+
+fatality.rate <- data$deaths / data$cases
+fatality.rate[is.na(fatality.rate)] <- 0
+fatality.rate[!is.finite(fatality.rate)] <- 0
+
+mean(fatality.rate)
+sd(fatality.rate)
+
+
+```
+
+***#### Cases and fatalities are very low. The data is very skewed dut to many places an dates have zero cases or fatalities. ####***
+
+##2)Inferential Statistics: Pick 2 countries and compare their incidence and fatality rates using hypothesis testing and confidence interval methods
+```{r}
+france <- subset(data, data$countriesAndTerritories == 'France')
+poland <- subset(data, data$countriesAndTerritories == 'Poland')
+
+#Summary France cases
+summary(france$cases)
+#Summary France Deaths  
+summary(france$deaths)
+#Summary Poland cases
+summary(poland$cases)
+#Summary Polancd Deaths   
+summary(poland$cases)
+
+#France mean deaths
+france.mean <- mean(france$deaths)
+france.mean
+
+#France standard deviation of deaths
+france.sd <- sd(france$deaths)
+france.sd
+
+#Poland mean deaths
+poland.mean <- mean(poland$deaths)
+poland.mean
+#Poland standard deviation of deaths
+poland.sd <- sd(poland$deaths)
+poland.sd
+
+t.test(france$cases, poland$cases)
+#case differences are not statistically significant
+t.test(france$deaths,poland$deaths)
+#difference in deaths is statistically significant
+
+france.daily.rate <- france$deaths / france$cases
+france.daily.rate[is.na(france.daily.rate)] <- 0
+france.daily.rate[!is.finite(france.daily.rate)] <- 0
+
+poland.daily.rate <- poland$deaths / poland$cases
+
+#Daily rates are statistically significant as well
+t.test(france.daily.rate, poland.daily.rate)
+
+```
+
+##3)Correlation: Pick all the countries and evaluate the relationship between incidence rates and fatality rates. Compute the correlation coefficient, if relevant.
+```{r}
+cor(data$cases, data$deaths)
+cor(fatality.rate, case.rate)
+var.test(fatality.rate, case.rate)
+```
+
+***#### While cases and fatalities are correlated. Cases and fatalities rates have nearly no correlation. This is likely due to variance among death rates per country ####***
+
+##4)Regression: Pick United States. Look at the time series of cases and time series of deaths. Use a regression model to predict the number of cases and the number of deaths for the next 5 days in the future.
+```{r}
+us <- subset(data, data$countriesAndTerritories =='United_States_of_America')
+
+#Cases and deaths marginally correlated in US. a linear regression model may not produce the best results.
+cor(us$cases, us$deaths)
+
+us$dates <- as.Date(us$dateRep, format = '%d/%m/%y')
+
+plot(us$dates, us$cases, col = 4, type = 'l', main = 'US COVID-19 Cases and Death', xlab = 'Date', ylab = 'Cases', lwd = 2)
+lines(us$dates, us$deaths, col = 6, lwd = 2)
+legend('topleft', legend=c("Cases", "Deaths"),
+col=c(4,6), lty = 1, lwd = 2)
+
+
+#Order the dates in the data frame to choose the appropriate days.
+real.data <- us[order(us$dates),]
+
+#data ends on 2020-12-31, list next 5 days
+next5days <- as.Date(c("2020-12-31", "2021-01-01", "2021-01-02", "2021-01-03", "2021-01-04"))
+
+days <- data.frame(dates = next5days)
+
+#predict cases for next 5 days
+model <- lm(cases ~ dates, data = real.data)
+plot(model)
+
+pred_1 <- data.frame(predict(model, newdata = days))
+pred_1
+
+#predict deaths for next 5 days
+predcases <- as.numeric(c(123416.7,123820.9, 124225.0, 124629.1, 125033.3))
+newcases <- data.frame(cases = predcases)
+model2 <- lm(deaths ~ cases, data = real.data)
+plot(model2)
+pred_2 <- predict(model2, newdata = newcases)
+pred_2
+```
+
+***#### Times series forecast to compare results ####***
+```{r}
+#create time series data to plot time series forecast
+us.case.ts <- xts(us$cases, order.by = us$dates)
+auto <- auto.arima(us.case.ts)
+future <- forecast(auto, h=5)
+plot(future, main = 'Forecast US Cases in Next 5 Days', xlab = 'Time', ylab = 'US Cases')
+
+#Projections for cases over the next 5 Days
+as.numeric(future$mean)
+
+us.death.ts <- xts(us$deaths, order.by = us$dates)
+auto2 <- auto.arima(us.death.ts)
+future.deaths <- forecast(auto2, h = 5)
+plot(future.deaths, main = 'Forecast Deaths in Next 5 Days', xlab = 'Time', ylab = 'US Deaths')
+
+#Projections for deaths over the next 5 Days
+as.numeric(future.deaths$mean)
+
+```

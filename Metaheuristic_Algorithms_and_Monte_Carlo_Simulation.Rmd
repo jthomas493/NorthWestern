@@ -1,0 +1,243 @@
+---
+title: "Homework Assignment (Problem Set) 4:"
+author: "THOMAS, JAMES"
+date: "8/11/2021"
+output: word_document
+---
+
+1.  Perform Monte Carlo integration using R statistical programming or Python programming to estimate the value of π. To summarize the approach, consider the unit quarter circle illustrated in the figure below:
+
+a)	Create a function insidecircle that takes two inputs between 0 and 1 
+and returns 1 if these points fall within the unit circle.
+
+
+```{r inside circle}
+insidecircle <- function(x,y){
+  sucess <- as.integer(((x^2 + y^2) <= 1))
+  return(sucess)
+}
+```
+
+b) Create a function estimatepi that takes a single input N, generates N pairs of uniform random numbers and uses insidecircle to produce an estimate of π as described above. In addition to the estimate of π, estimatepi should also return the standard error of this estimate, and a 95% confidence interval for the estimate.
+
+```{r estimatepi}
+estimatepi <- function(N){
+  cpoint <- replicate(N, expr= {
+    insidecircle(runif(1), runif(1))
+  })
+    est.pi <- 4*sum(cpoint)/N
+  er <- sd(cpoint)/sqrt(N)
+  # multiplied 4 to get SE of pi
+  #95% confidence interval (Z=1.96)
+  conf.95 <- c(est.pi-1.96*er, est.pi+1.96*er)
+  val <- c(est.pi, er, conf.95)
+  #return the values
+  return(val)
+  }
+```
+
+c) Use estimatepi to estimate π for N = 1000 to 10000 in increments of 500 and record the estimate, its standard error and the upper and lower bounds of the 95% CI. How large must N be in order to ensure that your estimate of π is within 0.1 of the true value?
+
+```{r estimate for N}
+#Store results in a data frame
+estimates <- as.data.frame(matrix(ncol=5, nrow=0))
+n <- 1000
+while(n <= 10000){
+  estimates <- rbind(estimates, c(n,  estimatepi(n)))
+ n <- n+500
+}
+#Name the columns
+names(estimates) <- c('N ', 'pi estimate', 'error  ', '   95% CI-lower', '   95% CI-upper')
+
+#Print the results
+estimates
+```
+
+```{r}
+er <- .1/pi
+zstar <- qnorm(.975)
+prob <- .05
+
+(zstar/er)^2 * prob*(1-prob)
+
+print("N must be atleast 180 to be within .1 of the actual values")
+```
+
+
+d)Using the value of N you determined in part c), run estimatepi 500 times and collect 500 different estimates of π. Produce a histogram of the estimates and note the shape of this distribution. Calculate the standard deviation of the 
+estimates – does it match the standard error you obtained in part c)? What 
+percentage of the estimates lies within the 95% CI you obtained in part c)?
+
+```{r estimate pi 500 times}
+pi.500 <- c()
+n1 <- 180 #sample size
+for (i in 1: 500){
+  pi.500 <- c(pi.500, estimatepi(n1)[1]) 
+}
+#Plot histogram
+hist(pi.500, xlab='pi', main='Estimates of pi', col = 7, breaks=10)
+#Standard deviation
+sd.500 <- sd(pi.500)
+
+summary(pi.500)
+
+#Percent within 95% CI in part c
+percent.95 <- (pnorm((max(pi.500)-mean(pi.500))/sd(pi.500))-pnorm((min(pi.500)-mean(pi.500))/sd(pi.500)))*100
+
+sprintf("Percent of the estimates that lie within the CI: %s", round(percent.95,2))
+```
+
+
+2.  A salesperson in a large bicycle shop is paid a bonus if he sells more than 4 bicycles a day.  The probability of selling more than 4 bicycles a day is only 0.40.  If the number of bicycles sold is greater than 4, the distribution of sales as shown below.  The shop has four different models of bicycles.  The amount of the bonus paid out varies by type.  The bonus for model A is $10; 40% of the bicycles sold are of this type.  Model B accounts for 35% of the sales and pays a bonus of $15.  Model C has a bonus rating of $20 and makes up 20% of the sales.  Finally, a model D pays a bonus of $25 for each sale but accounts for only 5% of the sales.  Develop a simulation model to calculate the bonus a salesperson can expect in a day.
+
+Table
+Number of Bicycles Sold		Probability
+5					0.35
+6					0.45
+7					0.15
+8					0.05
+
+
+```{r}
+require(roperators)
+num.days <- 10000
+total.bonus <- 0
+bonuses = c()
+
+# simulation loop
+for (i in floor(runif(1, min <- 1, max <- 100))){
+  days <- i
+  if (runif(1) > 0.4){
+    day.bonus <- 0 
+    num.cycles.prob <- runif(1)}
+    if (num.cycles.prob < 0.35){
+      num.cycles <- 5}
+      else if (num.cycles.prob < 0.8){
+            num.cycles = 6}
+      else if (num.cycles.prob < 0.95){
+            num.cycles = 7}
+      else (num.cycles = 8)
+#iterating through the cycles to calculate bonus
+  for (i in range(num.cycles))
+    { model = runif(1) 
+      if (model > 0.4){bonus = 10}
+      else if (model<0.75){bonus = 15}
+      else if (model<0.95){bonus = 20}
+      else (bonus = 25)
+      day.bonus %+=% bonus
+  append(bonuses, day.bonus)
+  total.bonus %+=% day.bonus}
+
+}
+average.bonus = total.bonus/num.days
+sprintf("Number of Days: %s", days)
+sprintf("Total Bonus: $%s", total.bonus)
+
+
+```
+##3.Michael is 24 years old and has a 401(k) plan through his employer, a large financial institution.  His company matches 50% of his contributions up to 6% of his salary.  He currently contributes the maximum amount he can (i.e., 6%).  In his 401(k), he has three funds.  Investment A is a large-cap index fund, which has had an average annual growth over the past 10 years of 6.63% with a standard deviation of 13.46%.  Investment B is a mid-cap index fund with a 10-year average annual growth of 9.89% and a standard deviation of 15.28%.  Finally, Investment C is a small-cap Index fund with a 10-year average annual growth rate of 8.55% and a standard deviation of 16.90%.  Fifty percent of his contribution is directed to Investment A, 25% to Investment B, and 25% to Investment C.  His current salary is $48,000 and based on a compensation survey of financial institutions, he expects an average raise of 2.7% with a standard deviation of 0.4% each year.  Develop a simulation model to predict his 401(k) balance at age 60.
+
+
+
+```{r}
+require(roperators)
+
+age <- 24
+salary <- 48000
+balance <- 0
+
+while(age <= 59){
+ mark.contribution <- salary * .06
+ match <- mark.contribution * .5
+ total.contribution <- mark.contribution + match
+ 
+ #investment A is 50% of all contributions
+ invest.a <- total.contribution * .5
+ #added value of investment A increases 6.63% with sd of 13.46% of percent change
+ invest.a <-  invest.a + runif(1, invest.a - invest.a * (.0663 * .1346), invest.a + invest.a *(.0663 * .1346))
+ 
+ #investment B is 25% of all contributions
+ invest.b <- total.contribution *.25
+ #added value of investment B increases 9.89% with SD of 15.28% of percent change
+ invest.b <- invest.b + runif(1, invest.b - invest.b * (.0989 * .1528), invest.b + invest.b *(.0989 * .1528))
+ 
+ #investment B is 25% of all contributions
+ invest.c <- total.contribution * .25
+ #added value of investment B increases 8.55% with SD of 16.90% of percent change
+ invest.c <- invest.c + runif(1, invest.c - invest.c * (.0855 * .1690), invest.c + invest.c *(.0855 * .1690))
+ 
+ balance <- balance + invest.a + invest.b + invest.c
+ #salary increases 2.7% with SD of .4%
+ salary <- salary + salary* (.027 * .004)
+ age <- age + 1  
+}
+
+sprintf("Age: %s", age)
+sprintf("401(k) Total: $%s", round(balance, 2))
+# value changes each time the loop is run
+
+```
+
+4.  Develop a simulated annealing procedure in either R or Python to solve the following knapsack problem: (Note, this problem can be solved to optimally using integer programming; however, the focus of this question is on developing the simulated annealing method).
+
+Maximize 	12x1 + 16x2 + 22x3 + 8x4
+S.T.		4x1 + 5x2 + 7x3 + 3x4 ≤ 14
+		xi ~ binary for all i
+
+```{r}
+
+obj.func <- function(x){
+x1 <- round(runif(1),0)
+x2 <- round(runif(1),0)
+x3 <- round(runif(1),0)
+x4 <- round(runif(1),0)
+
+s.t. <- 4*x1 + 5*x2 + 7*x3 + 3*x4
+
+y <- 12*x1 + 16*x2 + 22*x3 + 8*x4
+
+while (s.t. < 14){
+  return(y)
+}
+
+return(y)
+}
+
+simulated_annealing <- function(objective, init.state, iter, step.size){
+
+best.state <- curr.state <- neighbor.state <- init.state
+best.func <- curr.func <- neighbor.func <- objective(neighbor.state)
+
+message("Iter\tBest\tCurrent\tNeigh\tTemp")
+message(sprintf("%i\t%.4f\t%.4f\t%.4f\t%.4f", 0L, best.func, curr.func, neighbor.func, 1))  
+
+# generate an initial point
+init.state <- obj.func(runif(1))
+# run the algorithm
+for (i in 1:iter){
+# calculate temperature
+  t <- (1-step.size)^i
+    neighbor.state <- rnorm(4,curr.state,1)
+ # take a step
+    neighbor.func <- objective(neighbor.state)
+    #update current state
+     if (neighbor.func > curr.func || runif(1, 0, 1) > exp(-( neighbor.func - curr.func) / t)) {
+        curr.state  <- neighbor.state
+        curr.func <- neighbor.func
+      }
+    # update best state
+      if ( neighbor.func > best.func) {
+        best.state <- neighbor.state
+        best.func <- neighbor.func         
+      }
+# report progress
+message(sprintf("%i\t%.4f\t%.4f\t%.4f\t%.4f", i, best.func, curr.func, neighbor.func, t))
+
+}
+ return(list(iterations = iter, best_value = best.func, best_state = best.state))
+}
+
+#simulated_annealing(objective, init.state, iter, step.size)
+simulated_annealing(obj.func, 0, 10, .01)
+
+```
